@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -9,6 +9,14 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
     depends_on:
       - collector
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: go run client/client.go
+    depends_on:
+      - app
 
   collector:
     image: otel/opentelemetry-collector:latest
@@ -21,6 +29,6 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "16686:16686"    # Jaeger UI port
+      - "16686:16686" # Jaeger UI port
     depends_on:
       - collector
