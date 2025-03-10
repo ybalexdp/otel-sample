@@ -30,5 +30,6 @@ services:
     image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686" # Jaeger UI port
+      - "14250:14250" # Collector gRPC
     depends_on:
       - collector

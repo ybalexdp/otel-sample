@@ -4,14 +4,17 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 	router := gin.New()
 
 	// Use OpenTelemetry middleware
-	router.Use(otelgin.Middleware("gin-server"))
+	router.Use(otelgin.Middleware("sample"))
 
 	// Define routes
 	router.GET("/", func(c *gin.Context) {
@@ -44,10 +47,19 @@ func main() {
 }
 
 func initTracer() (*trace.TracerProvider, error) {
-	// Create stdout exporter to see the output
-	exporter, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint(),
+	ctx := context.Background()
+
+	// Create OTLP exporter
+	conn, err := grpc.DialContext(ctx, "collector:4317",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithTimeout(5*time.Second),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +69,7 @@ func initTracer() (*trace.TracerProvider, error) {
 		trace.WithBatcher(exporter),
 		trace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("gin-opentelemetry-sample"),
+			semconv.ServiceNameKey.String("sample"),
 		)),
 	)
 
